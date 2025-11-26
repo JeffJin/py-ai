@@ -1,46 +1,45 @@
-#%%
 import math
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import random
 
-trueW = np.array([1, 2, 3, 4, 5])
-def generateData():
+trueW = np.array([8, 12, 23, 4, 35])
+def generate_data():
     x = np.random.randn(len(trueW))
     y = trueW.dot(x) + np.random.randn()
     # print(f"example: x={x}, y={y}")
     return (x, y)
 
-trainingData = [generateData() for _ in range(10000)]
+training_data = [generate_data() for _ in range(1000000)]
 
 def phi(x):
     return np.array(x)
 
-def initW():
+def initial_weights():
     return np.zeros(len(trueW))
 
-def trainLoss(w):
-    return 1 / len(trainingData) * sum((w.dot(phi(x)) - y) ** 2 for x, y in trainingData)
+def train_loss(w):
+    return 1 / len(training_data) * sum((w.dot(phi(x)) - y) ** 2 for x, y in training_data)
 
 # this results in a 1 x 2 matrix, [0, 0], [0.47, 1.27] ...
-def gradiantTrainLoss(w):
+def gradiant_train_loss(w):
     # w = [w1, w2]
     # phi(x) =[1, x] => [1, 1], [1, 2], [1, 4]
     # y = w1 * 1 + w2 * x
-    return 1 / len(trainingData) * sum(2 * (w.dot(phi(x)) - y) * phi(x) for x, y in trainingData)
+    return 1 / len(training_data) * sum(2 * (w.dot(phi(x)) - y) * phi(x) for x, y in training_data)
 
-def stochasticTrainLoss(w, i):
-    # w = [w1, w2]
+def stochastic_train_loss(w, i = -1):
+    # w = [w1, w2, ...]
     # phi(x) =[1, x] => [1, 1], [1, 2], [1, 4]
     if i >= 0:
-        [x, y] = trainingData[i]
+        [x, y] = training_data[i]
         return 2 * (w.dot(phi(x)) - y) * phi(x)
     else:
-        [x, y] = random.choice(trainingData)
+        [x, y] = random.choice(training_data)
         return 2 * (w.dot(phi(x)) - y) * phi(x)
 
-def drawData(w_values):
+def draw_data(w_values):
     # Plot the line using coordinates from w_values
     w_df = pd.DataFrame(w_values, columns=["x", "y"])
     plt.plot(w_df["x"], w_df["y"], marker="o", label="Line")
@@ -51,43 +50,43 @@ def drawData(w_values):
     plt.grid(True)
     plt.show()
 
-def gradiantDescent(gradiantFunc, step):
-    w = initW()
+def gradiant_descent(gradiant_func, step):
+    w = initial_weights()
     w_values = []
     iteration = 0  # Manual iteration counter
 
     while True:
-        gradiant = gradiantFunc(w)
+        gradiant = gradiant_func(w)
         w = w - step * gradiant
+        w_values.append(w.copy())
+        print(f"Loss at iteration {iteration}: w={w}, gradiant={gradiant}")
+        iteration += 1  # Increment iteration counter
         if np.linalg.norm(gradiant) < 1e-9:  # Convergence condition
             break
         if iteration > 500:  # Iteration limit to prevent infinite loops
             print("Iteration limit reached. Stopping.")
             break
-        w_values.append(w.copy())
-        print(f"Loss at iteration {iteration}: w={w}, gradiant={gradiant}")
-        iteration += 1  # Increment iteration counter
 
-def stochasticGradiantDescent(stGradiantFunc, n):
-    w = initW()
+def stochastic_gradiant_descent(st_gradiant_func, n):
+    w = initial_weights()
     iteration = 0  # Manual iteration counter
     w_values = []
 
     # option 1
-    for _ in range(10):
-        for i in range(n):
-            gradiant = stGradiantFunc(w, i)
-            iteration += 1  # Increment iteration counter
-            step = 1.0 / math.sqrt(iteration)
-            w = w - step * gradiant
-            if np.linalg.norm(gradiant) < 1e-5:  # Convergence condition
-              break
-            w_values.append(w.copy())
-            print(f"Loss at iteration {iteration}: n={n}, w={w}, step={step}, gradiant={gradiant}")
+    # for _ in range(10):
+    for i in range(n):
+        gradiant = st_gradiant_func(w, i)
+        iteration += 1  # Increment iteration counter
+        step = 1.0 / math.sqrt(iteration)
+        w = w - step * gradiant
+        if np.linalg.norm(gradiant) < 1e-5:  # Convergence condition
+          break
+        w_values.append(w.copy())
+        print(f"Loss at iteration {iteration}: n={n}, w={w}, step={step}, gradiant={gradiant}")
 
     # option 2
     # while True:
-    #     gradiant = stGradiantFunc(w, -1)
+    #     gradiant = st_gradiant_func(w, -1)
     #     iteration += 1  # Increment iteration counter
     #     step = 1.0 / math.sqrt(iteration)
     #     # step = 0.01
@@ -101,8 +100,8 @@ def stochasticGradiantDescent(stGradiantFunc, n):
     #     print(f"Loss at iteration {iteration}: n={n}, w={w}, step={step}, gradiant={gradiant}")
     # drawData(w_values)
 
-gradiantDescent(gradiantTrainLoss, 0.1)
-# stochasticGradiantDescent(stochasticTrainLoss, len(trainingData))
+# gradiant_descent(gradiant_train_loss, 0.1)
+stochastic_gradiant_descent(stochastic_train_loss, len(training_data))
 
 #%%
 

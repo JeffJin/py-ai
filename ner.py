@@ -10,7 +10,7 @@ from collections import defaultdict
 trainExamples = util.readExamples('names.train')
 validExamples = util.readExamples('names.valid')
 
-def featureExtractor(x):
+def feature_extractor(x):
     # Example: x = "took Mauritius into"
     phi = defaultdict(float)
     tokens = x.split()
@@ -25,12 +25,12 @@ def featureExtractor(x):
     return phi
 
 # Learn a predictor
-weights = submission.learnPredictor(trainExamples, validExamples, featureExtractor)
+weights = submission.learnPredictor(trainExamples, validExamples, feature_extractor)
 util.outputWeights(weights, 'weights')
-util.outputErrorAnalysis(validExamples, featureExtractor, weights, 'error-analysis')
+util.outputErrorAnalysis(validExamples, feature_extractor, weights, 'error-analysis')
 
 # Test (only do this at the end)!
 testExamples = util.readExamples('names.test')
-predictor = lambda x : 1 if util.dotProduct(featureExtractor(x), weights) > 0 else -1
+predictor = lambda x : 1 if util.dotProduct(feature_extractor(x), weights) > 0 else -1
 testError = util.evaluatePredictor(testExamples, predictor)
 print(f'test error = {testError}')
