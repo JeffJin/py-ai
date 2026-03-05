@@ -44,25 +44,25 @@ def get_email_feature_templates(email):
         suffix = email[-4:]
         phi[f"suffix={suffix}"] = 1
 
-    # --- Template 2: Length Threshold (from your image) ---
+    # --- Template 2: Length Threshold ---
     # "Length greater than ____"
     # We can add multiple thresholds automatically
     phi["len>5"] = 1 if len(email) > 5 else 0
     phi["len>10"] = 1 if len(email) > 10 else 0
 
-    # --- Template 3: Alpha Fraction (from your image) ---
+    # --- Template 3: Alpha Fraction ---
     # "Fraction of alphanumeric characters"
     # This detects weird symbols. 'abc@123' is high, '##$$@!!' is low.
     alpha_num_count = sum(c.isalnum() for c in email)
     phi["frac_alnum"] = alpha_num_count / len(email) if len(email) > 0 else 0
 
-    # --- Template 4: Character Counts (The Fix for your '@' issue) ---
+    # --- Template 4: Character Counts (The Fix for '@' issue) ---
     # Instead of checking IF it exists, we count it.
     # We create a feature specifically for the count.
     at_count = email.count('@')
     phi[f"count_@={at_count}"] = 1
 
-    # Template 5: Character Counts (The Fix for your '.' issue)
+    # Template 5: Character Counts (The Fix for '.' issue)
     # We can do the same for dots
     dot_count = email.count('.')
     phi[f"count_.={dot_count}"] = 1
@@ -110,8 +110,10 @@ def logistic_loss(w, x, y):
     local_score = sparse_dot_product(w, phi)
     return np.log(1 + np.exp(-local_score * y))
 
+lambda_param = 0.01
+
 # --------------------------Option 1-------------------------
-def train_logistic_sgd(email, y_raw, w, learning_rate, lambda_reg=0.0):
+def train_logistic_sgd(email, y_raw, w, learning_rate, lambda_reg=0.01):
     """
     email: The input string
     y_raw: +1 for Valid, -1 for Invalid
@@ -133,16 +135,16 @@ def train_logistic_sgd(email, y_raw, w, learning_rate, lambda_reg=0.0):
     error_term = prediction - target
 
     # E. Update Weights (Sparse SGD)
-    for key, x_val in features.items():
+    for key, phi_val in features.items():
         # 1. Lazy Initialization: If weight doesn't exist, start at 0
         if key not in w:
             w[key] = 0.0
 
         # 2. Calculate Gradient for this specific weight
-        # Gradient = (pred - y) * x + (2 * lambda * w)
+        # Gradient = (pred - y) * phi_val + (2 * lambda_reg * w)
         # Note: We apply regularization only to features present in this example
         # (This is an approximation called "Lazy Regularization")
-        gradient = (error_term * x_val) + (2 * lambda_reg * w[key])
+        gradient = (error_term * phi_val) + (2 * lambda_reg * w[key])
 
         # 3. Descent Step
         w[key] = w[key] - (learning_rate * gradient)
@@ -163,7 +165,6 @@ def train_batch_logistic_sgd(data):
 # --------------------------End of Option 1-------------------------
 
 # --------------------------Option 2-------------------------
-lambda_param = 0.01
 def train_one_example(email, y_true, w):
     # A. Generate Features (using the template function from before)
     # e.g., {'suffix=com': 1, 'len>5': 1}
@@ -186,7 +187,8 @@ def train_one_example(email, y_true, w):
                 w[key] = 0.0
 
             # 2. Update it
-            w[key] += lambda_param * y_true * value
+            # w[key] += lambda_param * y_true * value
+            w[key] = w[key] + lambda_param * y_true * value
     return w
 
 def train_batch_examples(data):
@@ -200,9 +202,9 @@ def train_batch_examples(data):
 def train_loss(w):
     return 1 / len(training_data) * sum(hinge_loss(w, row['email'], row['label']) for _, row in training_data.iterrows())
 
-def train_svm_sgd(w, email, label, step = 0.01):
+def train_svm_sgd(w, email, y, step = 0.01):
     phi = get_email_feature_templates(email)
-    margin = sparse_dot_product(w, phi) * label
+    margin = sparse_dot_product(w, phi) * y
     if 1 > margin:
         gradient = {}
         for key, y_val in phi.items():
@@ -210,10 +212,10 @@ def train_svm_sgd(w, email, label, step = 0.01):
             if key not in w:
                 w[key] = 0.0
             # 2. Calculate Gradient for this specific weight
-            gradient[key] = -label * phi[key]
+            gradient[key] = -y * phi[key]
         # update weights based on gradient and step size
         for k, g in list(gradient.items()):
-            w[k] = w.get(k, 0) - step * g
+            w[k] = w[k] - step * g
     return w
 
 def train_svm_batch(step):

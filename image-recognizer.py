@@ -25,13 +25,28 @@ _,m_train = x_train.shape
 #     - The syntax `0` means you are selecting the first column in those rows.
 print('x shape = ', x_train.shape)
 
-def init_params(n1, n2):
-    w1 = np.random.rand(10, n1) - 0.5
-    b1 = np.random.rand(10, 1) - 0.5
-    w2 = np.random.rand(10, n2) - 0.5
-    b2 = np.random.rand(10, 1) - 0.5
-    # print('init_params', w1, b1, w2, b2)
-    return w1, b1, w2, b2
+def init_params(n1, n2, n3):
+    """
+    Initialize parameters using Xavier/Glorot initialization.
+    n1: input size (784 for 28x28 images)
+    n2: first hidden layer size (256)
+    n3: second hidden layer size (128)
+    """
+    # Xavier/Glorot initialization for weights
+    # Formula: sqrt(2.0 / (fan_in + fan_out))
+    # w1: (256, 784) - fan_in=784, fan_out=256
+    w1 = np.random.randn(256, n1) * np.sqrt(2.0 / (n1 + 256))
+    # w2: (128, 256) - fan_in=256, fan_out=128
+    w2 = np.random.randn(128, 256) * np.sqrt(2.0 / (256 + 128))
+    # w3: (10, 128) - fan_in=128, fan_out=10
+    w3 = np.random.randn(10, 128) * np.sqrt(2.0 / (128 + 10))
+    
+    # Initialize biases to zero (common practice)
+    b1 = np.zeros((256, 1))
+    b2 = np.zeros((128, 1))
+    b3 = np.zeros((10, 1))
+    
+    return w1, b1, w2, b2, w3, b3
 
 def ReLU(z):
     return np.maximum(0, z)
@@ -40,13 +55,17 @@ def softmax(z):
     # exp(z2[0][0]) / (exp(z2[0][0]) + exp(z2[1][0]) + ... + exp(z2[9][0]))
     return np.exp(z) / np.sum(np.exp(z), axis=0)
 
-def forward_prop(w1, b1, w2, b2, x):
+def forward_prop(w1, b1, w2, b2, w3, b3, x):
+    # First hidden layer: 784 -> 256
     z1 = w1.dot(x) + b1
-    # a1 = np.tanh(z1)  #
-    a1 = ReLU(z1) # ReLU(z1)
+    a1 = ReLU(z1)
+    # Second hidden layer: 256 -> 128
     z2 = w2.dot(a1) + b2
-    a2 = softmax(z2)
-    return z1, a1, z2, a2
+    a2 = ReLU(z2)
+    # Output layer: 128 -> 10
+    z3 = w3.dot(a2) + b3
+    a3 = softmax(z3)
+    return z1, a1, z2, a2, z3, a3
 
 def one_hot(y):
     y_onehot = np.zeros((y.shape[0], y.max() + 1)) #y.shape[0] is m, training sample size
@@ -55,9 +74,6 @@ def one_hot(y):
     return y_onehot
 # print(one_hot(np.array([0, 3, 2, 6, 3, 7, 9, 0, 2, 2, 3, 4, 5])))
 
-def deriv_tanh(z):
-    return 1 - np.tanh(z)**2
-
 def deriv_ReLU(z):
     return (z > 0).astype(int)
 
@@ -65,37 +81,35 @@ def deriv_softmax(z):
     s = z.reshape(-1, 1)
     return np.diagflat(s) - np.dot(s, s.T)
 
-def back_propagation_v1(Z1,  A1, Z2, A2, W1, W2, X, Y):
+def back_propagation(Z1, A1, Z2, A2, Z3, A3, W1, W2, W3, X, Y):
     m = Y.shape[0]
     onehot_Y = one_hot(Y) # one_hot is expected value(real value in the image)
-    dZ2 = A2 - onehot_Y # negative value for the valid ones and positive for invalid ones (-1 to +1)
+    # For softmax + cross-entropy loss, the derivative simplifies to:
+    # dL/dz = softmax(z) - y = A3 - onehot_Y
+    # This is mathematically equivalent to: J @ (dL/ds) but much simpler!
+    dZ3 = A3 - onehot_Y
+    dW3 = 1/m * dZ3.dot(A2.T)
+    db3 = 1/m * np.sum(dZ3, axis=1, keepdims=True)
+    
+    # Backprop through second hidden layer
+    dZ2 = W3.T.dot(dZ3) * deriv_ReLU(Z2)
     dW2 = 1/m * dZ2.dot(A1.T)
-    db2 = 1/m * np.sum(dZ2)
+    db2 = 1/m * np.sum(dZ2, axis=1, keepdims=True)
+    
+    # Backprop through first hidden layer
     dZ1 = W2.T.dot(dZ2) * deriv_ReLU(Z1)
-    # dZ11 = dZ2.T.dot(W2).T * deriv_ReLU(Z1)
-    # print(dZ1 == dZ11)
     dW1 = 1 / m * dZ1.dot(X.T)
-    db1 = 1 / m * np.sum(dZ1)
-    return dW1, db1, dW2, db2
+    db1 = 1 / m * np.sum(dZ1, axis=1, keepdims=True)
+    return dW1, db1, dW2, db2, dW3, db3
 
-# TODO - implement another version with other activation functions
-def back_propagation_v2(Z1,  A1, Z2, A2, W1, W2, X, Y):
-    m = Y.shape[0]
-    onehot_Y = one_hot(Y) # one_hot is expected value(real value in the image)
-    dZ2 = A2 - onehot_Y # negative value for the valid ones and positive for invalid ones (-1 to +1)
-    dW2 = 1/m * dZ2.dot(A1.T)
-    db2 = 1/m * np.sum(dZ2)
-    dZ1 = W2.T.dot(dZ2) * deriv_tanh(Z1)
-    dW1 = 1 / m * dZ1.dot(X.T)
-    db1 = 1 / m * np.sum(dZ1)
-    return dW1, db1, dW2, db2
-
-def update_params(W1, b1, W2, b2, dW1, db1, dW2, db2, alpha):
+def update_params(W1, b1, W2, b2, W3, b3, dW1, db1, dW2, db2, dW3, db3, alpha):
     W1 = W1 - alpha * dW1
     b1 = b1 - alpha * db1
     W2 = W2 - alpha * dW2
     b2 = b2 - alpha * db2
-    return W1, b1, W2, b2
+    W3 = W3 - alpha * dW3
+    b3 = b3 - alpha * db3
+    return W1, b1, W2, b2, W3, b3
 
 def get_predictions(A2):
     return np.argmax(A2, 0)
@@ -105,26 +119,26 @@ def get_accuracy(predictions, Y):
     return np.sum(predictions == Y) / Y.size
 
 def gradient_descent(X, Y, alpha, iterations):
-    W1, b1, W2, b2 = init_params(784, 10)
+    W1, b1, W2, b2, W3, b3 = init_params(784, 256, 128)
     for i in range(iterations):
-        Z1, A1, Z2, A2 = forward_prop(W1, b1, W2, b2, X)
-        dW1, db1, dW2, db2 = back_propagation_v1(Z1, A1, Z2, A2, W1, W2, X, Y)
-        W1, b1, W2, b2 = update_params(W1, b1, W2, b2, dW1, db1, dW2, db2, alpha)
+        Z1, A1, Z2, A2, Z3, A3 = forward_prop(W1, b1, W2, b2, W3, b3, X)
+        dW1, db1, dW2, db2, dW3, db3 = back_propagation(Z1, A1, Z2, A2, Z3, A3, W1, W2, W3, X, Y)
+        W1, b1, W2, b2, W3, b3 = update_params(W1, b1, W2, b2, W3, b3, dW1, db1, dW2, db2, dW3, db3, alpha)
         if i % 10 == 0:
             print("Iteration: ", i)
-            predictions = get_predictions(A2)
+            predictions = get_predictions(A3)
             print(get_accuracy(predictions, Y))
-    return W1, b1, W2, b2
+    return W1, b1, W2, b2, W3, b3
 
-def make_predictions(X, W1, b1, W2, b2):
-    _, _, _, A2 = forward_prop(W1, b1, W2, b2, X)
-    predictions = get_predictions(A2)
+def make_predictions(X, W1, b1, W2, b2, W3, b3):
+    _, _, _, _, _, A3 = forward_prop(W1, b1, W2, b2, W3, b3, X)
+    predictions = get_predictions(A3)
     return predictions
 
 
-def test_prediction(index, W1, b1, W2, b2):
+def test_prediction(index, W1, b1, W2, b2, W3, b3):
     current_image = x_train[:, index, None]
-    prediction = make_predictions(x_train[:, index, None], W1, b1, W2, b2)
+    prediction = make_predictions(x_train[:, index, None], W1, b1, W2, b2, W3, b3)
     label = y_train[index]
     print("Prediction: ", prediction)
     print("Label: ", label)
@@ -134,17 +148,19 @@ def test_prediction(index, W1, b1, W2, b2):
     plt.imshow(current_image, interpolation='nearest')
     plt.show()
 
-W1, b1, W2, b2 = gradient_descent(x_train, y_train, 0.10, 500)
-# print(W1.shape, b1.shape, W2.shape, b2.shape)
+W1, b1, W2, b2, W3, b3 = gradient_descent(x_train, y_train, 0.10, 500)
+print(f"W1 shape: {W1.shape}, b1 shape: {b1.shape}")
+print(f"W2 shape: {W2.shape}, b2 shape: {b2.shape}")
+print(f"W3 shape: {W3.shape}, b3 shape: {b3.shape}")
 
-test_prediction(0, W1, b1, W2, b2)
-test_prediction(1, W1, b1, W2, b2)
-test_prediction(2, W1, b1, W2, b2)
-test_prediction(3, W1, b1, W2, b2)
-test_prediction(4, W1, b1, W2, b2)
-test_prediction(5, W1, b1, W2, b2)
-test_prediction(6, W1, b1, W2, b2)
-test_prediction(7, W1, b1, W2, b2)
+test_prediction(0, W1, b1, W2, b2, W3, b3)
+test_prediction(1, W1, b1, W2, b2, W3, b3)
+test_prediction(2, W1, b1, W2, b2, W3, b3)
+test_prediction(3, W1, b1, W2, b2, W3, b3)
+test_prediction(4, W1, b1, W2, b2, W3, b3)
+test_prediction(5, W1, b1, W2, b2, W3, b3)
+test_prediction(6, W1, b1, W2, b2, W3, b3)
+test_prediction(7, W1, b1, W2, b2, W3, b3)
 
-dev_predictions = make_predictions(x_dev, W1, b1, W2, b2)
+dev_predictions = make_predictions(x_dev, W1, b1, W2, b2, W3, b3)
 get_accuracy(dev_predictions, y_dev)
