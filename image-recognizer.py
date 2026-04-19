@@ -35,11 +35,11 @@ def init_params(n1, n2, n3):
     # Xavier/Glorot initialization for weights
     # Formula: sqrt(2.0 / (fan_in + fan_out))
     # w1: (256, 784) - fan_in=784, fan_out=256
-    w1 = np.random.randn(256, n1) * np.sqrt(2.0 / (n1 + 256))
+    w1 = np.random.randn(n2, n1) * np.sqrt(2.0 / (n1 + n2))
     # w2: (128, 256) - fan_in=256, fan_out=128
-    w2 = np.random.randn(128, 256) * np.sqrt(2.0 / (256 + 128))
+    w2 = np.random.randn(n3, n2) * np.sqrt(2.0 / (n2 + n3))
     # w3: (10, 128) - fan_in=128, fan_out=10
-    w3 = np.random.randn(10, 128) * np.sqrt(2.0 / (128 + 10))
+    w3 = np.random.randn(10, n3) * np.sqrt(2.0 / (n3 + 10))
     
     # Initialize biases to zero (common practice)
     b1 = np.zeros((256, 1))
@@ -55,7 +55,7 @@ def softmax(z):
     # exp(z2[0][0]) / (exp(z2[0][0]) + exp(z2[1][0]) + ... + exp(z2[9][0]))
     return np.exp(z) / np.sum(np.exp(z), axis=0)
 
-def forward_prop(w1, b1, w2, b2, w3, b3, x):
+def forward_propagation(w1, b1, w2, b2, w3, b3, x):
     # First hidden layer: 784 -> 256
     z1 = w1.dot(x) + b1
     a1 = ReLU(z1)
@@ -121,7 +121,7 @@ def get_accuracy(predictions, Y):
 def gradient_descent(X, Y, alpha, iterations):
     W1, b1, W2, b2, W3, b3 = init_params(784, 256, 128)
     for i in range(iterations):
-        Z1, A1, Z2, A2, Z3, A3 = forward_prop(W1, b1, W2, b2, W3, b3, X)
+        Z1, A1, Z2, A2, Z3, A3 = forward_propagation(W1, b1, W2, b2, W3, b3, X)
         dW1, db1, dW2, db2, dW3, db3 = back_propagation(Z1, A1, Z2, A2, Z3, A3, W1, W2, W3, X, Y)
         W1, b1, W2, b2, W3, b3 = update_params(W1, b1, W2, b2, W3, b3, dW1, db1, dW2, db2, dW3, db3, alpha)
         if i % 10 == 0:
@@ -131,7 +131,7 @@ def gradient_descent(X, Y, alpha, iterations):
     return W1, b1, W2, b2, W3, b3
 
 def make_predictions(X, W1, b1, W2, b2, W3, b3):
-    _, _, _, _, _, A3 = forward_prop(W1, b1, W2, b2, W3, b3, X)
+    _, _, _, _, _, A3 = forward_propagation(W1, b1, W2, b2, W3, b3, X)
     predictions = get_predictions(A3)
     return predictions
 
