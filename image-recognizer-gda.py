@@ -17,9 +17,6 @@ y_train = data_train[0]
 x_train = data_train[1:n] / 255
 _, m_train = x_train.shape
 
-
-# ------------------------------------------
-
 def fit_gda(X, Y, num_classes=10):
   """Trains the GDA by calculating the Mean and Covariance for all classes."""
   n_features, m_samples = X.shape
@@ -43,6 +40,7 @@ def fit_gda(X, Y, num_classes=10):
 
   print("2. Calculating Shared Covariance Matrix (Sigma)...")
   # Center the data by subtracting the correct class mean from every sample
+  # shifting data so the class mean is at zero.
   X_centered = np.zeros_like(X)
   for i in range(m_samples):
     k = Y[i]
@@ -73,6 +71,10 @@ def predict_gda(X, phis, mus, Sigma, num_classes=10):
     # THE MAGIC TRICK: This simplifies into W * X + b!
     # Because Sigma is shared, the complex Gaussian math
     # mathematically collapses into a standard linear equation.
+    # log p(x|y=k) ∝ -0.5 (x-μ_k)^T Σ^{-1} (x-μ_k) + log φ_k
+    # This is where the "magic trick" kicks in. Expanding (x-μ)^T Σ^{-1} (x-μ):
+    # = x^T Σ^{-1} x - 2μ_k^T Σ^{-1} x + μ_k^T Σ^{-1} μ_k
+    # The x^T Σ^{-1} x term is the same for all classes → dropped from argmax. What remains is linear in x:
     # ---------------------------------------------------------
     W_k = Sigma_inv.dot(mu_k)
     b_k = -0.5 * mu_k.T.dot(Sigma_inv).dot(mu_k) + np.log(phis[k])
@@ -82,7 +84,6 @@ def predict_gda(X, phis, mus, Sigma, num_classes=10):
 
   # The prediction is simply the class that scored the highest Likelihood
   return np.argmax(predictions, axis=0)
-
 
 def get_accuracy(predictions, Y):
   return np.sum(predictions == Y) / Y.size
@@ -95,7 +96,7 @@ phis, mus, Sigma = fit_gda(x_train, y_train)
 
 print("\n--- Testing GDA ---")
 train_preds = predict_gda(x_train, phis, mus, Sigma)
-print(f"Training Accuracy: {get_accuracy(train_preds, y_train) * 100:.2f}%")
+print(f"GDA Training Accuracy: {get_accuracy(train_preds, y_train) * 100:.2f}%")
 
 dev_preds = predict_gda(x_dev, phis, mus, Sigma)
-print(f"Dev/Validation Accuracy: {get_accuracy(dev_preds, y_dev) * 100:.2f}%")
+print(f"GDA Dev/Validation Accuracy: {get_accuracy(dev_preds, y_dev) * 100:.2f}%")

@@ -118,13 +118,26 @@ def get_accuracy(predictions, Y):
     print(predictions, Y)
     return np.sum(predictions == Y) / Y.size
 
-def gradient_descent(X, Y, alpha, iterations):
+def gradient_descent(X, Y, alpha, iterations, epsilon=1e-5):
     W1, b1, W2, b2, W3, b3 = init_params(784, 256, 128)
+    prev_loss = float('inf')
+
     for i in range(iterations):
         Z1, A1, Z2, A2, Z3, A3 = forward_propagation(W1, b1, W2, b2, W3, b3, X)
         dW1, db1, dW2, db2, dW3, db3 = back_propagation(Z1, A1, Z2, A2, Z3, A3, W1, W2, W3, X, Y)
         W1, b1, W2, b2, W3, b3 = update_params(W1, b1, W2, b2, W3, b3, dW1, db1, dW2, db2, dW3, db3, alpha)
-        if i % 10 == 0:
+
+        m = Y.shape[0]
+        current_loss = -1 / m * np.sum(one_hot(Y) * np.log(A3 + 1e-8))  # 1e-8 prevents log(0)
+
+        # Convergence Check
+        if abs(prev_loss - current_loss) < epsilon:
+          print(f"Converged at iteration {i}")
+          break
+
+        prev_loss = current_loss
+
+        if i % 100 == 0:
             print("Iteration: ", i)
             predictions = get_predictions(A3)
             print(get_accuracy(predictions, Y))
@@ -163,4 +176,4 @@ test_prediction(6, W1, b1, W2, b2, W3, b3)
 test_prediction(7, W1, b1, W2, b2, W3, b3)
 
 dev_predictions = make_predictions(x_dev, W1, b1, W2, b2, W3, b3)
-get_accuracy(dev_predictions, y_dev)
+print(f"MLP Dev/Validation Accuracy: {get_accuracy(dev_predictions, y_dev) * 100:.2f}%")
