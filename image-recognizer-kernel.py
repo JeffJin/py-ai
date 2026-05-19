@@ -33,6 +33,10 @@ class KernelLMS:
     dist_sq = np.linalg.norm(X_T[:, np.newaxis] - Z_T, axis=2) ** 2
     return np.exp(-dist_sq / (2 * sigma_sq))
 
+  def _linear_kernel_matrix(self, X, Z):
+    # Computes K(x, z) = X @ T.T
+    return X @ Z.T
+
   def train(self, X, y):
     self.X_train = X
     n_samples = X.shape[1]
