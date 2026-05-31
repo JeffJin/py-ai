@@ -57,14 +57,14 @@ def softmax(z):
 
 def forward_propagation(w1, b1, w2, b2, w3, b3, x):
     # First hidden layer: 784 -> 256
-    z1 = w1.dot(x) + b1
-    a1 = ReLU(z1)
+    z1 = w1.dot(x) + b1 # the result shape is [256, m]
+    a1 = ReLU(z1) # the result shape is [256, m]
     # Second hidden layer: 256 -> 128
-    z2 = w2.dot(a1) + b2
-    a2 = ReLU(z2)
+    z2 = w2.dot(a1) + b2  # the result shape is [128, m]
+    a2 = ReLU(z2) # the result shape is [128, m]
     # Output layer: 128 -> 10
-    z3 = w3.dot(a2) + b3
-    a3 = softmax(z3)
+    z3 = w3.dot(a2) + b3 # the result shape is [10, m]
+    a3 = softmax(z3) # the result shape is [10, m]
     return z1, a1, z2, a2, z3, a3
 
 def one_hot(y):
@@ -81,33 +81,46 @@ def deriv_softmax(z):
     s = z.reshape(-1, 1)
     return np.diagflat(s) - np.dot(s, s.T)
 
-def back_propagation(Z1, A1, Z2, A2, Z3, A3, W1, W2, W3, X, Y):
+
+def back_propagation(Z1, A1, Z2, A2, Z3, A3, W1, W2, W3, X, Y, lambd):
     m = Y.shape[0]
-    onehot_Y = one_hot(Y) # one_hot is expected value(real value in the image)
-    # For softmax + cross-entropy loss, the derivative simplifies to:
-    # dL/dz = softmax(z) - y = A3 - onehot_Y
-    # This is mathematically equivalent to: J @ (dL/ds) but much simpler!
+    onehot_Y = one_hot(Y)
+
+    # Gradient calculation with L2 term added: (lambd / m) * W
     dZ3 = A3 - onehot_Y
-    dW3 = 1/m * dZ3.dot(A2.T)
-    db3 = 1/m * np.sum(dZ3, axis=1, keepdims=True)
-    
-    # Backprop through second hidden layer
+    dW3 = 1 / m * dZ3.dot(A2.T) + (lambd / m) * W3
+    db3 = 1 / m * np.sum(dZ3, axis=1, keepdims=True)
+
     dZ2 = W3.T.dot(dZ3) * deriv_ReLU(Z2)
-    dW2 = 1/m * dZ2.dot(A1.T)
-    db2 = 1/m * np.sum(dZ2, axis=1, keepdims=True)
-    
-    # Backprop through first hidden layer
+    dW2 = 1 / m * dZ2.dot(A1.T) + (lambd / m) * W2
+    db2 = 1 / m * np.sum(dZ2, axis=1, keepdims=True)
+
     dZ1 = W2.T.dot(dZ2) * deriv_ReLU(Z1)
-    dW1 = 1 / m * dZ1.dot(X.T)
+    dW1 = 1 / m * dZ1.dot(X.T) + (lambd / m) * W1
     db1 = 1 / m * np.sum(dZ1, axis=1, keepdims=True)
+
     return dW1, db1, dW2, db2, dW3, db3
 
-def update_params(W1, b1, W2, b2, W3, b3, dW1, db1, dW2, db2, dW3, db3, alpha):
-    W1 = W1 - alpha * dW1
+
+def update_params(W1, b1, W2, b2, W3, b3, dW1, db1, dW2, db2, dW3, db3, alpha, lambd, m):
+    """
+    Updates weights using Gradient Descent with Weight Decay.
+    Mathematically: W = W - alpha * (grad + (lambd/m)*W)
+    Rearranged: W = W * (1 - alpha * lambd / m) - alpha * grad
+    """
+
+    # Weight decay explanation:
+    # The term (1 - alpha * lambd / m) scales the weight by a factor
+    # slightly less than 1. This "decays" the weight toward zero
+    # at every iteration, penalizing complexity.
+    decay = (1 - alpha * lambd / m)
+
+    W1 = W1 * decay - alpha * dW1
+    W2 = W2 * decay - alpha * dW2
+    W3 = W3 * decay - alpha * dW3
+
     b1 = b1 - alpha * db1
-    W2 = W2 - alpha * dW2
     b2 = b2 - alpha * db2
-    W3 = W3 - alpha * dW3
     b3 = b3 - alpha * db3
     return W1, b1, W2, b2, W3, b3
 
@@ -118,29 +131,24 @@ def get_accuracy(predictions, Y):
     print(predictions, Y)
     return np.sum(predictions == Y) / Y.size
 
-def gradient_descent(X, Y, alpha, iterations, epsilon=1e-5):
+def gradient_descent(X, Y, alpha, iterations, lambd=0.1):
     W1, b1, W2, b2, W3, b3 = init_params(784, 256, 128)
-    prev_loss = float('inf')
+    m = Y.shape[0]
 
     for i in range(iterations):
         Z1, A1, Z2, A2, Z3, A3 = forward_propagation(W1, b1, W2, b2, W3, b3, X)
-        dW1, db1, dW2, db2, dW3, db3 = back_propagation(Z1, A1, Z2, A2, Z3, A3, W1, W2, W3, X, Y)
-        W1, b1, W2, b2, W3, b3 = update_params(W1, b1, W2, b2, W3, b3, dW1, db1, dW2, db2, dW3, db3, alpha)
 
-        m = Y.shape[0]
-        current_loss = -1 / m * np.sum(one_hot(Y) * np.log(A3 + 1e-8))  # 1e-8 prevents log(0)
+        # Calculate cost with L2 penalty
+        cross_entropy = -1 / m * np.sum(one_hot(Y) * np.log(A3 + 1e-8))
+        L2_penalty = (lambd / (2 * m)) * (np.sum(np.square(W1)) + np.sum(np.square(W2)) + np.sum(np.square(W3)))
+        current_loss = cross_entropy + L2_penalty
 
-        # Convergence Check
-        if abs(prev_loss - current_loss) < epsilon:
-          print(f"Converged at iteration {i}")
-          break
-
-        prev_loss = current_loss
+        dW1, db1, dW2, db2, dW3, db3 = back_propagation(Z1, A1, Z2, A2, Z3, A3, W1, W2, W3, X, Y, lambd)
+        W1, b1, W2, b2, W3, b3 = update_params(W1, b1, W2, b2, W3, b3, dW1, db1, dW2, db2, dW3, db3, alpha, lambd, m)
 
         if i % 100 == 0:
-            print("Iteration: ", i)
-            predictions = get_predictions(A3)
-            print(get_accuracy(predictions, Y))
+            print(f"Iteration: {i}, Loss: {current_loss:.4f}")
+
     return W1, b1, W2, b2, W3, b3
 
 def make_predictions(X, W1, b1, W2, b2, W3, b3):
