@@ -45,7 +45,7 @@ def fit_nb(X, Y, num_classes=10):
         phis[k] = m_k / m_samples
 
         # phi_{j|y=k} = sum(x_j=1 AND y=k) / sum(y=k)  with Laplace smoothing
-        phi_j_given_k[:, k] = (np.sum(X_k, axis=1) + 1) / (m_k + 2)
+        phi_j_given_k[:, k] = (np.sum(X_k, axis=1) + 1) / (m_k + num_classes)
 
     return phis, phi_j_given_k
 
