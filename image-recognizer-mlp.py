@@ -50,6 +50,9 @@ def init_params(n1, n2, n3):
 def ReLU(z):
   return np.maximum(0, z)
 
+def sigmoid(z):
+  return 1 / (1 + np.exp(-z))
+
 
 def softmax(z):
   # exp(z2[0][0]) / (exp(z2[0][0]) + exp(z2[1][0]) + ... + exp(z2[9][0]))
@@ -60,10 +63,10 @@ def softmax(z):
 def forward_propagation(w1, b1, w2, b2, w3, b3, x):
     # First hidden layer: 784 -> 256
     z1 = w1.dot(x) + b1 # the result shape is [256, m]
-    a1 = ReLU(z1) # the result shape is [256, m]
+    a1 = sigmoid(z1) # the result shape is [256, m]
     # Second hidden layer: 256 -> 128
     z2 = w2.dot(a1) + b2  # the result shape is [128, m]
-    a2 = ReLU(z2) # the result shape is [128, m]
+    a2 = sigmoid(z2) # the result shape is [128, m]
     # Output layer: 128 -> 10
     z3 = w3.dot(a2) + b3 # the result shape is [10, m]
     a3 = softmax(z3) # the result shape is [10, m]
@@ -82,6 +85,8 @@ def one_hot(y):
 def deriv_ReLU(z):
   return (z > 0).astype(int)
 
+def deriv_Sigmoid(z):
+  return sigmoid(z) * (1 - sigmoid(z))
 
 
 def back_propagation(Z1, A1, Z2, A2, Z3, A3,
@@ -94,11 +99,11 @@ def back_propagation(Z1, A1, Z2, A2, Z3, A3,
     dW3 = 1 / m * dZ3.dot(A2.T) + (lambd / m) * W3
     db3 = 1 / m * np.sum(dZ3, axis=1, keepdims=True)
 
-    dZ2 = W3.T.dot(dZ3) * deriv_ReLU(Z2)
+    dZ2 = W3.T.dot(dZ3) * deriv_Sigmoid(Z2)
     dW2 = 1 / m * dZ2.dot(A1.T) + (lambd / m) * W2
     db2 = 1 / m * np.sum(dZ2, axis=1, keepdims=True)
 
-    dZ1 = W2.T.dot(dZ2) * deriv_ReLU(Z1)
+    dZ1 = W2.T.dot(dZ2) * deriv_Sigmoid(Z1)
     dW1 = 1 / m * dZ1.dot(X.T) + (lambd / m) * W1
     db1 = 1 / m * np.sum(dZ1, axis=1, keepdims=True)
 

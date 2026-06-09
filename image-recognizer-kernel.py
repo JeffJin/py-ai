@@ -25,12 +25,16 @@ class KernelLMS:
 
   def _rbf_kernel_matrix(self, X, Z):
     # Computes K(x, z) = exp(-||x - z||^2 / sigma**2) for all pairs
+    # Uses ||x-z||^2 = ||x||^2 + ||z||^2 - 2x^Tz to avoid a (n,n,d) intermediate tensor
     X_T = X.T
     Z_T = Z.T
     X_sub = X_T[:1000, :]
-    sub_dist_sq = np.linalg.norm(X_sub[:, np.newaxis] - X_sub, axis=2) ** 2
+    X_sub_norms = np.sum(X_sub ** 2, axis=1)
+    sub_dist_sq = X_sub_norms[:, None] + X_sub_norms[None, :] - 2 * X_sub @ X_sub.T
     sigma_sq = np.median(sub_dist_sq)
-    dist_sq = np.linalg.norm(X_T[:, np.newaxis] - Z_T, axis=2) ** 2
+    X_norms = np.sum(X_T ** 2, axis=1)
+    Z_norms = np.sum(Z_T ** 2, axis=1)
+    dist_sq = X_norms[:, None] + Z_norms[None, :] - 2 * X_T @ Z_T.T
     return np.exp(-dist_sq / (2 * sigma_sq))
 
   def _linear_kernel_matrix(self, X, Z):
@@ -48,19 +52,9 @@ class KernelLMS:
     K = self._rbf_kernel_matrix(X, X)
 
 
-    # 3. np.linalg.solve(A, b) => solves the equation Ax = b for x, where A is a square matrix.
-    # self.beta = np.linalg.solve(K + self.lam * np.eye(n_samples), y)
-    # 3. Training Loop (Batch Update)
-    for _ in range(self.epochs):
-      # Prediction: y_hat = K @ beta
-      predictions = K @ self.beta
-
-      # Error: y - y_hat
-      error = y - predictions
-
-      # Update: beta = beta + alpha * error
-      self.beta += self.alpha * error
-      # self.beta += self.alpha * (error - self.lam * self.beta)
+    # Exact kernel ridge regression: (K + lam*I) @ beta = y
+    # Gradient descent diverges unless alpha < 2/lambda_max(K)^2 (~1e-7 for n=4000)
+    self.beta = np.linalg.solve(K + self.lam * np.eye(n_samples), y)
 
   def predict(self, X_test):
     # To predict, we need the kernel between test data and training data
