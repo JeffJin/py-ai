@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/py-jupyter.iml" filepath="$PROJECT_DIR$/.idea/py-jupyter.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/py-vim.iml" filepath="$PROJECT_DIR$/.idea/py-vim.iml" />
     </modules>
   </component>
 </project>
