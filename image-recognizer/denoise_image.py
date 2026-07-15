@@ -290,7 +290,7 @@ def load_and_preprocess_image(image_path, threshold=128):
     return torch.from_numpy(binary_img), img_array
 
 # Load image (update path to your noisy image)
-image_path = 'data/noisy_image.png'  # Change this to your image path
+image_path = '../data/noisy_image.png'  # Change this to your image path
 
 # Load and preprocess the image
 noisy_img, original_gray = load_and_preprocess_image(image_path)

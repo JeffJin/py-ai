@@ -71,7 +71,7 @@ for _ in range(dataset_size):
 random.shuffle(data)
 
 # --- Save to CSV ---
-filename = 'data/emails1.csv'
+filename = '../data/emails1.csv'
 with open(filename, 'w', newline='') as f:
     writer = csv.writer(f)
     writer.writerow(['email', 'label'])

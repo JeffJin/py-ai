@@ -3,7 +3,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 
 # --- [YOUR EXACT DATA LOADING CODE HERE] ---
-data = pd.read_csv('./data/image-recognizer-train.csv')
+data = pd.read_csv('../data/image-recognizer-train.csv')
 data = np.array(data)
 m, n = data.shape
 np.random.shuffle(data)

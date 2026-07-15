@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-data = pd.read_csv('./data/image-recognizer-train.csv')
+data = pd.read_csv('../data/image-recognizer-train.csv')
 data = np.array(data)[0:2000]
 m, n = data.shape
 np.random.shuffle(data)

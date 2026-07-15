@@ -14,7 +14,7 @@ async def read_example():
     print(f"Content from {url}:\n{content[:300]}...")  # Print first 200 chars
 
 def read_file():
-    with open('./data/salary_Data.csv', 'r') as file:
+    with open('../data/salary_Data.csv', 'r') as file:
         # lines = file.readlines()
         for line in file:
             print(line)
@@ -29,7 +29,7 @@ def write_json_file(filename, data):
 
 
 def list_dir():
-    entries = os.scandir('./data')
+    entries = os.scandir('../data')
     for entry in entries:
         print(entry)
 

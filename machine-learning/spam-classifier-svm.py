@@ -3,7 +3,7 @@ import pandas as pd
 import re
 from collections import Counter
 
-data = pd.read_csv('./data/spam.csv', encoding='latin-1')[['label', 'email']]
+data = pd.read_csv('../data/spam.csv', encoding='latin-1')[['label', 'email']]
 data.columns = ['label', 'text']
 data = data.sample(frac=1, random_state=42).reset_index(drop=True)
 y = data['label'].values  # already 0/1 integers

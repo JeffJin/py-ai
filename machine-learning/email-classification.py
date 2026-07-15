@@ -19,7 +19,7 @@ dtype_spec = {
 }
 
 training_data = pd.read_csv(
-    "data/emails1.csv",
+    "../data/emails1.csv",
     dtype=dtype_spec
 )
 

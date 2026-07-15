@@ -11,7 +11,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f'Using device: {device}')
 
 # Load and preprocess data
-data = pd.read_csv('./data/image-recognizer-train.csv')
+data = pd.read_csv('../data/image-recognizer-train.csv')
 data = np.array(data)
 m, n = data.shape
 

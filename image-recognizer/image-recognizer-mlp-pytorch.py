@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.optim as optim
 from matplotlib import pyplot as plt
 
-data = pd.read_csv('./data/image-recognizer-train.csv')
+data = pd.read_csv('../data/image-recognizer-train.csv')
 data = data.sample(frac=1).reset_index(drop=True)
 
 data_dev = data.iloc[0:1000]

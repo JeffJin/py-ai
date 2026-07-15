@@ -6,7 +6,7 @@ from collections import Counter
 # Dataset: SMS Spam Collection
 # Download: https://www.kaggle.com/datasets/uciml/sms-spam-collection-dataset
 # Place at ./data/spam.csv (columns: v1=label, v2=text)
-data = pd.read_csv('./data/spam.csv', encoding='latin-1')[['v1', 'v2']]
+data = pd.read_csv('../data/spam.csv', encoding='latin-1')[['v1', 'v2']]
 data.columns = ['label', 'text']
 data = data.sample(frac=1, random_state=42).reset_index(drop=True)
 y = (data['label'] == 'spam').astype(int).values
