@@ -8,13 +8,18 @@ dependencies:
   - python=3.11
   - cmake=3.31.2
   - boost=1.82.0
+  # --- BLAS: use OpenBLAS instead of MKL to avoid omp_get_num_procs symbol conflict on Linux ---
+  - nomkl
+  - libblas=*=*openblas
   # --- notebooks / kernels ---
   - notebook=7.3.2
+  - jupyterlab>=4        # required by notebook>=7; prevents old v3 being pulled in by jupyter=1.1.1
+  - jupyter_server>=2   # required by notebook>=7 and jupyterlab>=4
   - jupyter=1.1.1
-  - ipykernel=7.3.0
-  - tk=8.6.14
+  - ipykernel=6.29.5    # fixed: 7.x is macOS/Windows only; latest Linux stable is 6.x
+  - tk>=8.6             # loosened: =8.6.14 conflicts on Linux; let conda pick compatible build
   # --- scientific stack ---
-  - numpy>=1.24,<2.0  # Fixed to protect PyTorch 2.2 C-API mappings
+  - numpy>=2.0,<3.0
   - pandas=2.2.3
   - scipy=1.17.1
   - scikit-learn=1.8.0
@@ -23,11 +28,9 @@ dependencies:
   - plotly=6.0.0
   - pillow=12.1.1
   - requests=2.34.2
-  # --- pytorch (CUDA 11.8 build) ---
-  - pytorch=2.2.2
-  - torchvision=0.17.2  # 0.15.2 was built for PyTorch 2.0 and fails under 2.2 (undefined symbol)
-  - torchaudio=2.2.2
-  - pytorch-cuda=11.8
+  # --- pytorch ---
+  # Official PyTorch releases after 2.5 are distributed as pip wheels.
+  # CUDA 12.8 supports the RTX 3090 Ti (Ampere) with a sufficiently new driver.
   # --- RL / misc ---
   - gymnasium=1.0.0
   - jax-jumpy=1.0.0
@@ -42,16 +45,20 @@ dependencies:
   - pyparsing=3.2.1
   - python-dateutil=2.9.0.post0
   - six=1.17.0
-  - typing_extensions=4.12.2
+  - typing_extensions>=4.12.2  # loosened: =4.12.2 conflicts with ipykernel 6.x deps
   - zipp=3.21.0
   - pip
   - pip:
+      - --extra-index-url https://download.pytorch.org/whl/cu128
+      - torch>=2.8,<3
+      - torchvision
+      - torchaudio
       - osmium==4.0.2  # PyPI distribution of pyosmium; not packaged as "osmium" on conda-forge
 
 # Notes:
 # - Merged from the former environment.yml (py-ai-pytorch) and environment-xcs.yml (xcs-torch)
 #   into this single source of truth. The active env / PyCharm interpreter is `xcs-torch`.
-# - Uses the `pytorch` and `nvidia` channels so the binary build is compatible with CUDA 11.8.
-#   Python is pinned to 3.11 to avoid the torchvision / Python 3.12 compatibility problems.
+# - PyTorch is installed from its CUDA 12.8 pip wheel index; Conda manages the environment.
+#   Python remains pinned to 3.11 for broad package compatibility.
 # - Create:  conda env create -f environment.yml
 # - Update:  conda env update -f environment.yml -n xcs-torch --prune

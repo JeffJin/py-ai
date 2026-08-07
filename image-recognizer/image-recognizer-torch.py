@@ -57,9 +57,9 @@ class NeuralNetwork(nn.Module):
     def forward(self, x):
         # Forward pass: Input -> Hidden1 -> Hidden2 -> Output
         z1 = self.fc1(x)   # 784 -> 256
-        a1 = F.relu(z1)    # ReLU activation
+        a1 = F.sigmoid(z1)    # ReLU activation
         z2 = self.fc2(a1)  # 256 -> 128
-        a2 = F.relu(z2)    # ReLU activation
+        a2 = F.sigmoid(z2)    # ReLU activation
         z3 = self.fc3(a2)  # 128 -> 10
         # Note: We'll apply softmax in the loss function (CrossEntropyLoss does this)
         return z3

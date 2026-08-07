@@ -50,10 +50,11 @@ def init_params(n1, n2, n3):
 def ReLU(z):
   return np.maximum(0, z)
 
+# sigmoid(z) converts any real number into a value between 0 and 1
 def sigmoid(z):
   return 1 / (1 + np.exp(-z))
 
-
+# softmax converts the 10 output scores into class probabilities that sum to 1.
 def softmax(z):
   # exp(z2[0][0]) / (exp(z2[0][0]) + exp(z2[1][0]) + ... + exp(z2[9][0]))
   z_shifted = z - np.max(z, axis=0)
@@ -87,7 +88,6 @@ def deriv_ReLU(z):
 
 def deriv_Sigmoid(z):
   return sigmoid(z) * (1 - sigmoid(z))
-
 
 def back_propagation(Z1, A1, Z2, A2, Z3, A3,
                      W1, W2, W3, X, Y, lambd):
