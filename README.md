@@ -1,5 +1,9 @@
 
 On the remote, restart Jupyter with:
+jupyter notebook stop 8888
+pkill -f jupyter
+
+conda activate xcs-torch
 jupyter notebook --no-browser --port=8888 --ip=0.0.0.0
 
 On Mac
