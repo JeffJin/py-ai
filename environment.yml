@@ -28,6 +28,8 @@ dependencies:
   - plotly=6.0.0
   - pillow=12.1.1
   - requests=2.34.2
+  - graphviz
+  - python-graphviz
   # --- pytorch ---
   # Official PyTorch releases after 2.5 are distributed as pip wheels.
   # CUDA 12.8 supports the RTX 3090 Ti (Ampere) with a sufficiently new driver.
