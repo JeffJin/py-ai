@@ -52,9 +52,9 @@ dependencies:
   - pip
   - pip:
       - --extra-index-url https://download.pytorch.org/whl/cu128
-      - torch>=2.8,<3
-      - torchvision
-      - torchaudio
+      - torch==2.11.0+cu128
+      - torchvision==0.26.0+cu128
+      - torchaudio==2.11.0+cu128
       - osmium==4.0.2  # PyPI distribution of pyosmium; not packaged as "osmium" on conda-forge
 
 # Notes:
