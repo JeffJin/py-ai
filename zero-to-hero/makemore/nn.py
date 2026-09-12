@@ -66,6 +66,14 @@ class Tanh:
     return []
 
 # -----------------------------------------------------------------------------------------------
+class ReLU:
+  def __call__(self, x):
+    self.out = torch.relu(x)
+    return self.out
+  def parameters(self):
+    return []
+
+# -----------------------------------------------------------------------------------------------
 # look up table C
 # row = num of letters 26 + 1
 # col = features
