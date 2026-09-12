@@ -1,3 +1,5 @@
+import time
+
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
@@ -215,12 +217,15 @@ class BigramLanguageModel(nn.Module):
     return idx
 
 
+total_start = time.perf_counter()
+
 model = BigramLanguageModel()
 m = model.to(device)
 
 # create a PyTorch optimizer
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 
+train_start = time.perf_counter()
 for iter in range(max_iters):
 
   # every once in a while evaluate the loss on train and val sets
@@ -236,7 +241,17 @@ for iter in range(max_iters):
   optimizer.zero_grad(set_to_none=True)
   loss.backward()
   optimizer.step()
+train_elapsed = time.perf_counter() - train_start
 
 # generate from the model
+inference_start = time.perf_counter()
 context = torch.zeros((1, 1), dtype=torch.long, device=device)
-print(decode(m.generate(context, max_new_tokens=500)[0].tolist()))
+generated = m.generate(context, max_new_tokens=500)
+print(decode(generated[0].tolist()))
+inference_elapsed = time.perf_counter() - inference_start
+
+total_elapsed = time.perf_counter() - total_start
+
+print(f"Training time: {train_elapsed:.2f} seconds")
+print(f"Inference time: {inference_elapsed:.2f} seconds")
+print(f"Total execution time: {total_elapsed:.2f} seconds")
