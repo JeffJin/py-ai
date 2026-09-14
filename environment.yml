@@ -29,6 +29,7 @@ dependencies:
   - pillow=12.1.1
   - requests=2.34.2
   - regex
+  - tiktoken
   - graphviz
   - python-graphviz
   # --- pytorch ---
