@@ -28,6 +28,7 @@ dependencies:
   - plotly=6.0.0
   - pillow=12.1.1
   - requests=2.34.2
+  - regex
   - graphviz
   - python-graphviz
   # --- pytorch ---
@@ -37,7 +38,6 @@ dependencies:
   - gymnasium=1.0.0
   - jax-jumpy=1.0.0
   - pygame=2.6.1
-  - keyboard=0.13.5
   - cloudpickle=3.1.1
   # --- support libs (pinned to keep the solve reproducible) ---
   - cycler=0.12.1
@@ -55,6 +55,7 @@ dependencies:
       - torch==2.11.0+cu128
       - torchvision==0.26.0+cu128
       - torchaudio==2.11.0+cu128
+      - keyboard==0.13.5  # not available via conda channels; pip-only
       - osmium==4.0.2  # PyPI distribution of pyosmium; not packaged as "osmium" on conda-forge
 
 # Notes:
