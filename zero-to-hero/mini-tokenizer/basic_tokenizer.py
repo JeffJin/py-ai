@@ -1,8 +1,4 @@
-from collections import Counter
-import time
 import torch
-import torch.nn as nn
-from torch.nn import functional as F
 from tokenizer_base import Tokenizer, merge, get_stats
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
