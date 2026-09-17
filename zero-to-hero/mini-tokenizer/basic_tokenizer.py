@@ -26,11 +26,11 @@ class BasicTokenizer(Tokenizer):
       merges[pair] = new_token
       reversed_merges[new_token] = pair
       self.vocab[new_token] = self.vocab[pair[0]] + self.vocab[pair[1]]
-      new_token += 1
       # prints
       if verbose:
-        print(f"merge {i + 1}/{num_merges}: {pair} -> {new_token - 1} ({self.vocab[new_token - 1]}) had {stats[pair]} occurrences")
-
+        decoded = self.decode([new_token])
+        print(f"merge {i + 1}/{num_merges}: {pair} -> {new_token} (decoded: {decoded}) had {stats[pair]} occurrences")
+    new_token += 1
     self.merges = merges
     self.reversed_merges = reversed_merges
 
