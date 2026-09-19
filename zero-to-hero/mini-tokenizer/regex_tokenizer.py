@@ -23,22 +23,25 @@ class RegexTokenizer(Tokenizer):
     sub_texts = self.pre_tokenize(text)
     merges = {}
     reversed_merges = {}
-    for sub_t in sub_texts:
-      ids = list(map(int, sub_t.encode('utf-8')))
-      while new_token < self.BASE_VOCAB_SIZE + num_merges and ids:
-        stats = get_stats(ids)
-        if not stats:
-          break
-        pair = max(stats, key=stats.get)
-        ids = merge(ids, pair, new_token)
-        merges[pair] = new_token
-        reversed_merges[new_token] = pair
-        self.vocab[new_token] = self.vocab[pair[0]] + self.vocab[pair[1]]
-        # prints
-        if verbose:
-          decoded = self.decode([new_token])
-          print(f"merge {new_token - self.BASE_VOCAB_SIZE + 1}/{num_merges}: {pair} -> {new_token} (decoded: {decoded}) had {stats[pair]} occurrences")
-        new_token += 1
+    # each chunk keeps its own ids list, but stats are aggregated across
+    # ALL chunks before deciding which pair to merge next
+    chunks_ids = [list(map(int, sub_t.encode('utf-8'))) for sub_t in sub_texts]
+    while new_token < self.BASE_VOCAB_SIZE + num_merges:
+      stats = {}
+      for ids in chunks_ids:
+        stats = get_stats(ids, stats)
+      if not stats:
+        break
+      pair = max(stats, key=stats.get)
+      chunks_ids = [merge(ids, pair, new_token) for ids in chunks_ids]
+      merges[pair] = new_token
+      reversed_merges[new_token] = pair
+      self.vocab[new_token] = self.vocab[pair[0]] + self.vocab[pair[1]]
+      # prints
+      if verbose:
+        decoded = self.decode([new_token])
+        print(f"merge {new_token - self.BASE_VOCAB_SIZE + 1}/{num_merges}: {pair} -> {new_token} (decoded: {decoded}) had {stats[pair]} occurrences")
+      new_token += 1
     self.merges = merges
     self.reversed_merges = reversed_merges
 
