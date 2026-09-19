@@ -29,7 +29,7 @@ def merge(ids, pair, idx):
   while len(ids) > i:
     if i < len(ids) - 1 and ids[i] == a and ids[i+1] == b:
       newids.append(idx)
-      i += 2
+      i += 2 # new index key replaces two original keys
     else:
       newids.append(ids[i])
       i += 1

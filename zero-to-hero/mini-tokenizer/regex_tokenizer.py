@@ -26,7 +26,6 @@ class RegexTokenizer(Tokenizer):
     # each chunk keeps its own ids list, but stats are aggregated across
     # ALL chunks before deciding which pair to merge next
     chunks_ids = [list(map(int, sub_t.encode('utf-8'))) for sub_t in sub_texts]
-    print('stats reassigned')
     while new_token < self.BASE_VOCAB_SIZE + num_merges:
       stats = {}
       for ids in chunks_ids:
