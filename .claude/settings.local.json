@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python image-recognizer-em-gmm.py)",
+      "Bash(conda run -n xcs-torch python -c ' *)",
+      "Bash(git rm *)",
+      "Bash(conda env *)"
+    ]
+  }
+}

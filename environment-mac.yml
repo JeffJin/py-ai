@@ -15,7 +15,7 @@ dependencies:
   - jupyterlab>=4        # required by notebook>=7; prevents old v3 being pulled in by jupyter=1.1.1
   - jupyter_server>=2   # required by notebook>=7 and jupyterlab>=4
   - jupyter=1.1.1
-  - ipykernel               # unpinned: 6.29.5 is Linux-focused; let conda pick a macOS-compatible build
+  - ipykernel               # unpinned: let conda pick a macOS-compatible build
   - tk>=8.6
   # --- scientific stack ---
   - numpy>=2.0,<3.0
@@ -61,8 +61,7 @@ dependencies:
 # - Removed the `nvidia` conda channel (irrelevant without CUDA on macOS).
 # - Removed the CUDA 12.8 (`+cu128`) pip wheel index; installs plain PyTorch wheels
 #   which support CPU and Apple Silicon MPS acceleration.
-# - Unpinned `ipykernel` since 6.29.5 targets Linux; conda will resolve a compatible
-#   macOS build automatically.
+# - `ipykernel` is unpinned in both yml files; conda resolves a compatible build per platform.
 # - Moved `keyboard` into the pip section — it is never available via conda channels
 #   (see PackagesNotFoundError), regardless of OS. Note: on macOS the `keyboard`
 #   package requires Accessibility/root permissions to capture global key events.

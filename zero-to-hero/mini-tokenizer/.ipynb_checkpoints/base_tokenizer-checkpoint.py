@@ -6,15 +6,23 @@ def get_stats(ids, stats=None):
   Given a list of integers, return a dictionary of counts of consecutive pairs
   Example: [1, 2, 3, 1, 2] -> {(1, 2): 2, (2, 3): 1, (3, 1): 1}
   Optionally allows to update an existing dictionary of counts
+  
+  Better implementation:
+  Counter(zip(ids[0:], ids[1:]))
   """
-  # return Counter(zip(ids, ids[1:]))
   if stats is None:
     stats = {}
-
+    
+  length = len(ids)
+  if length < 2:
+    return stats
+    
   for i in range(len(ids) - 1):
-    a, b = ids[i], ids[i + 1]
+    a = ids[i]
+    b = ids[i + 1]
     pair = (a, b)
-    stats[pair] = stats.get(pair, 0) + 1
+    stats[pair] = stats.get(pair, 0) + 1 
+
   return stats
 
 
@@ -27,11 +35,11 @@ def merge(ids, pair, idx):
   newids = []
   a, b = pair
   i = 0
-  while len(ids) > i:
+  while i < len(ids):
     if i < len(ids) - 1 and ids[i] == a and ids[i + 1] == b:
       newids.append(idx)
-      i += 2  # new index key replaces two original keys
-    else:
+      i += 2
+    else
       newids.append(ids[i])
       i += 1
   return newids
@@ -69,8 +77,8 @@ class Tokenizer:
 
   def __init__(self):
     # default: vocab size of 256 (all bytes), no merges, no patterns
-    self.merges = {}  # (int, int) -> int
-    self.reversed_merges = {}  # int -> (int, int)
+    self.bpe_map = {}  # (int, int) -> int
+    self.reversed_bpe_map = {}  # int -> (int, int)
     self.pattern = ""  # str
     self.special_tokens = {}  # str -> int, e.g. {'<|endoftext|>': 100257}
     self.vocab = self._build_vocab()  # int -> bytes
@@ -89,11 +97,11 @@ class Tokenizer:
 
   def _build_vocab(self):
     # vocab is simply and deterministically derived from merges
-    vocab = {idx: bytes([idx]) for idx in range(256)}
-    for (p0, p1), idx in self.merges.items():
-      vocab[idx] = vocab[p0] + vocab[p1]
-    for special, idx in self.special_tokens.items():
-      vocab[idx] = special.encode("utf-8")
+    vocab = {id: bytes([id]) for id in range(256)}
+    for (a, b), idx in self.bpe_map.items():
+      vocab[idx] = vocab[a] + vocab[b]   
+    for st, idx in self.special_tokens.items():
+      vocab[idx] = st.encode('utf-8')
     return vocab
 
   def save(self, file_prefix):
