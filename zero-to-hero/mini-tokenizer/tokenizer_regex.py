@@ -16,35 +16,58 @@ class RegexTokenizer(Tokenizer):
     output = regex.findall(GPT4_SPLIT_PATTERN, text)
     return output
 
-  # train the tokenizer on the given text to build the vocabulary and bpe merge maps
+  # train the tokenizer on the given text to build the vocabulary and BPE merge maps
+  # The base vocab already contains 256 byte values; each learned merge creates a new token
+  # by combining two existing tokens that co-occur most frequently in the training text.
   def train(self, text, vocab_size, verbose=False):
+    # Require a target size larger than the base byte vocabulary. The difference tells us
+    # how many merge operations to learn during training.
     assert vocab_size > self.BASE_VOCAB_SIZE
     num_merges = vocab_size - self.BASE_VOCAB_SIZE
     new_token = self.BASE_VOCAB_SIZE
+
+    # Split text into GPT-4-compatible regex chunks first, then encode each chunk as a list
+    # of byte ids. This keeps the algorithm aligned with how text is later tokenized.
     sub_texts = self.pre_tokenize(text)
     merges = {}
-    reversed_merges = {}
-    # each chunk keeps its own ids list, but stats are aggregated across
-    # ALL chunks before deciding which pair to merge next
+
+    # Each chunk keeps its own ids list, but statistics are aggregated across all chunks before
+    # deciding which pair to merge next. This makes the merge choice reflect the entire corpus.
     chunks_ids = [list(map(int, sub_t.encode('utf-8'))) for sub_t in sub_texts]
+
+    # Keep creating new merged tokens until we've reached the requested vocabulary size.
     while new_token < self.BASE_VOCAB_SIZE + num_merges:
+      # Count co-occurrence frequencies of adjacent token pairs across every chunk.
       stats = {}
       for ids in chunks_ids:
         stats = get_stats(ids, stats)
+
+      # If no pairs remain, training is done.
       if not stats:
         break
+
+      # Choose the most frequent pair to merge. This greedily maximizes the next BPE rule.
       pair = max(stats, key=stats.get)
+
+      # Apply the same merge rule to every chunk in parallel, so all training sequences are
+      # updated consistently with the new token.
       chunks_ids = [merge(ids, pair, new_token) for ids in chunks_ids]
+
+      # Record the merge mapping: a pair -> token id and token id -> pair.
       merges[pair] = new_token
-      reversed_merges[new_token] = pair
+
+      # Build the token string for the new merged symbol from its left and right child symbols.
       self.vocab[new_token] = self.vocab[pair[0]] + self.vocab[pair[1]]
-      # prints
+
+      # Optional debug output showing which merge was learned and how often it appeared.
       if verbose:
         decoded = self.decode([new_token])
         print(f"merge {new_token - self.BASE_VOCAB_SIZE + 1}/{num_merges}: {pair} -> {new_token} (decoded: {decoded}) had {stats[pair]} occurrences")
+
       new_token += 1
+
+    # Save the learned merge rules on the tokenizer instance for subsequent encoding.
     self.merges = merges
-    self.reversed_merges = reversed_merges
 
   # def train_threshold(self, text, threshold=5):
   #   new_token = self.BASE_VOCAB_SIZE
@@ -70,16 +93,22 @@ class RegexTokenizer(Tokenizer):
   #
   #   return ids
 
+  # returns the original byte sequence for a given token id, recursively expanding merged tokens
   def expand_bytes(self, token_id):
     if token_id < self.BASE_VOCAB_SIZE:
       return bytes([token_id])
     a, b = self.vocab[token_id]
     return self.expand_bytes(a) + self.expand_bytes(b)
 
+  # returns a string decoded from a list of token ids,
+  # using the learned merges to expand each token into its original byte sequence
   def decode(self, ids):
     data = b''.join(self.expand_bytes(t) for t in ids)
     return data.decode('utf-8', errors='replace')
 
+  # ids: a list of token ids in integer form
+  # returns a list of token ids for the input text,
+  # using the learned merges to combine byte sequences into tokens
   def encode(self, text):
     out = []
     for sub_t in self.pre_tokenize(text):

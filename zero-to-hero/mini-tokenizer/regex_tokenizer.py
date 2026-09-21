@@ -48,12 +48,30 @@ class RegexTokenizer(Tokenizer):
   #
   #   return ids
 
+
+  # bpe_map = {}  # (int, int) -> int
+  # reversed_bpe_map = {}  # int -> (int, int)
+  # returns the original byte sequence for a given token id, recursively expanding merged tokens
   def expand_bytes(self, token_id):
-    return None
+    if token_id < self.BASE_VOCAB_SIZE: # it means the token is in 0-255 range
+      return bytes([token_id])
+    else: 
+      (a, b) = self.vocab[token_id]
+      return self.expand_bytes(a) + self.expand_bytes(b)
 
+
+  # ids: a list of token ids in integer form
+  # returns a string decoded from a list of token ids, 
+  # using the learned merges to expand each token into its original byte sequence
   def decode(self, ids):
-    return None
-
+    # data = b''.join(self.expand_bytes(id) for id in ids)
+    data = b''
+    for id in ids:
+      data += self.expand_bytes(id)       
+    return data.decode('utf-8', errors='replace')
+    
+  # returns a list of token ids for the input text,
+  # using the learned merges to combine byte sequences into tokens
   def encode(self, text):
     out = []
 

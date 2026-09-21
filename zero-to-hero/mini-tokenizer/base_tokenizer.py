@@ -78,7 +78,6 @@ class Tokenizer:
   def __init__(self):
     # default: vocab size of 256 (all bytes), no merges, no patterns
     self.bpe_map = {}  # (int, int) -> int
-    self.reversed_bpe_map = {}  # int -> (int, int)
     self.pattern = ""  # str
     self.special_tokens = {}  # str -> int, e.g. {'<|endoftext|>': 100257}
     self.vocab = self._build_vocab()  # int -> bytes

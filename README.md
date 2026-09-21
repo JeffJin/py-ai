@@ -30,3 +30,7 @@ mutagen daemon stop 2>&1; sleep 2; ps aux | grep -i mutagen | grep -v grep; echo
 mutagen sync list — check status
 mutagen sync pause py-ai / resume py-ai — pause/resume
 mutagen sync terminate py-ai — stop sync completely
+
+
+conda update
+conda env update -f environment.yml -n xcs-torch --prune
