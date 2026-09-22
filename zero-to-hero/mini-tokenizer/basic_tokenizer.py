@@ -1,5 +1,6 @@
 import torch
-from tokenizer_base import Tokenizer, merge, get_stats
+from base_tokenizer import Tokenizer
+from tokenizer_utils import merge, get_stats
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -55,23 +56,20 @@ class BasicTokenizer(Tokenizer):
 
     return ids
 
-  def expand_bytes(self, token_id):
-    if token_id < self.BASE_VOCAB_SIZE:
-      return bytes([token_id])
-    a, b = self.vocab[token_id]
-    return self.expand_bytes(a) + self.expand_bytes(b)
-
   def decode(self, ids):
-    data = b''.join(self.expand_bytes(t) for t in ids)
+    data = b''.join(self.vocab[t] for t in ids)
     return data.decode('utf-8', errors='replace')
 
   def encode(self, text):
-    tokens = list(map(int, text.encode('utf-8')))
-    while len(tokens) >= 2:
-      stats = get_stats(tokens)
-      pair = min(stats, key=lambda p: self.reversed_merges.get(p, float('inf')))
-      if pair not in self.reversed_merges:
+    # given a string text, return the token ids
+    text_bytes = text.encode("utf-8")  # raw bytes
+    ids = list(text_bytes)  # list of integers in range 0..255
+    while len(ids) >= 2:
+      # find the pair with the lowest merge index
+      stats = get_stats(ids)
+      pair = min(stats, key=lambda p: self.bpe_map.get(p, float('inf')))
+      if pair not in self.bpe_map:
         break
-      idx = self.reversed_merges[pair]
-      tokens = merge(tokens, pair, idx)
-    return tokens
+      idx = self.bpe_map[pair]
+      ids = merge(ids, pair, idx)
+    return ids

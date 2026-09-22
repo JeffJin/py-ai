@@ -1,6 +1,7 @@
 import torch
 import regex
-from base_tokenizer import Tokenizer, merge, get_stats
+from base_tokenizer import Tokenizer
+from tokenizer_utils import merge, get_stats
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 GPT4_SPLIT_PATTERN = r"""'(?i:[sdmt]|ll|ve|re)|[^\r\n\p{L}\p{N}]?+\p{L}+|\p{N}{1,3}| ?[^\s\p{L}\p{N}]++[\r\n]*|\s*[\r\n]|\s+(?!\S)|\s+"""
@@ -29,7 +30,7 @@ class RegexTokenizer(Tokenizer):
     # Split text into GPT-4-compatible regex chunks first, then encode each chunk as a list
     # of byte ids. This keeps the algorithm aligned with how text is later tokenized.
     sub_texts = self.pre_tokenize(text)
-    merges = {}
+    bpe_map = {}
 
     # Each chunk keeps its own ids list, but statistics are aggregated across all chunks before
     # deciding which pair to merge next. This makes the merge choice reflect the entire corpus.
@@ -54,7 +55,7 @@ class RegexTokenizer(Tokenizer):
       chunks_ids = [merge(ids, pair, new_token) for ids in chunks_ids]
 
       # Record the merge mapping: a pair -> token id and token id -> pair.
-      merges[pair] = new_token
+      bpe_map[pair] = new_token
 
       # Build the token string for the new merged symbol from its left and right child symbols.
       self.vocab[new_token] = self.vocab[pair[0]] + self.vocab[pair[1]]
@@ -67,7 +68,7 @@ class RegexTokenizer(Tokenizer):
       new_token += 1
 
     # Save the learned merge rules on the tokenizer instance for subsequent encoding.
-    self.merges = merges
+    self.bpe_map = bpe_map
 
   # def train_threshold(self, text, threshold=5):
   #   new_token = self.BASE_VOCAB_SIZE
@@ -87,38 +88,35 @@ class RegexTokenizer(Tokenizer):
   #
   #       ids = merge(ids, (a, b), new_token)
   #       self.reversed_merges[(a, b)] = new_token
-  #       self.merges[new_token] = (a, b)
+  #       self.bpe_map[new_token] = (a, b)
   #
   #       new_token += 1
   #
   #   return ids
 
-  # returns the original byte sequence for a given token id, recursively expanding merged tokens
-  def expand_bytes(self, token_id):
-    if token_id < self.BASE_VOCAB_SIZE:
-      return bytes([token_id])
-    a, b = self.vocab[token_id]
-    return self.expand_bytes(a) + self.expand_bytes(b)
-
   # returns a string decoded from a list of token ids,
-  # using the learned merges to expand each token into its original byte sequence
+  # using the learned bpe_map to expand each token into its original byte sequence
   def decode(self, ids):
-    data = b''.join(self.expand_bytes(t) for t in ids)
+    data = b''.join(self.vocab[id] for id in ids)
     return data.decode('utf-8', errors='replace')
 
   # ids: a list of token ids in integer form
   # returns a list of token ids for the input text,
-  # using the learned merges to combine byte sequences into tokens
+  # using the learned bpe_map to combine byte sequences into tokens
   def encode(self, text):
-    out = []
-    for sub_t in self.pre_tokenize(text):
-      tokens = list(sub_t.encode("utf-8"))
-      while len(tokens) >= 2:
-        stats = get_stats(tokens)
-        pair = min(stats, key=lambda p: self.reversed_merges.get(p, float('inf')))
-        if pair not in self.reversed_merges:
-          break
-        idx = self.reversed_merges[pair]
-        tokens = merge(tokens, pair, idx)
-      out.extend(tokens)
-    return out
+    text_bytes = text.encode("utf-8")  # raw bytes
+    ids = list(text_bytes)  # list of integers in range 0..255
+    while len(ids) >= 2:
+      # find the pair with the lowest merge index
+      stats = get_stats(ids)
+      pair = min(stats, key=lambda p: self.bpe_map.get(p, float("inf")))
+      # subtle: if there are no more bpe_map available, the key will
+      # result in an inf for every single pair, and the min will be
+      # just the first pair in the list, arbitrarily
+      # we can detect this terminating case by a membership check
+      if pair not in self.bpe_map:
+        break  # nothing else can be merged anymore
+      # otherwise let's merge the best pair (lowest merge index)
+      idx = self.bpe_map[pair]
+      ids = merge(ids, pair, idx)
+    return ids
