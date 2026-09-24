@@ -13,6 +13,14 @@ class RegexTokenizer(Tokenizer):
     super().__init__()
     self.pattern = GPT4_SPLIT_PATTERN if pattern is None else pattern
     self.compiled_pattern = regex.compile(self.pattern)
+    self.special_tokens = {}
+    self.inverse_special_tokens = {}
+
+  def register_special_tokens(self, special_tokens):
+    # special_tokens is a dictionary of str -> int
+    # example: {"<|endoftext|>": 100257}
+    self.special_tokens = special_tokens
+    self.inverse_special_tokens = {v: k for k, v in special_tokens.items()}
 
   # split the text into chunks using the GPT4 regex pattern
   def pre_tokenize(self, text):
@@ -27,71 +35,65 @@ class RegexTokenizer(Tokenizer):
     # how many merge operations to learn during training.
     assert vocab_size > self.BASE_VOCAB_SIZE
     num_merges = vocab_size - self.BASE_VOCAB_SIZE
-    bpe_map = {}
-    reversed_bpe_map = {}
+    merges = {}
     # Split text into GPT-4-compatible regex chunks first, then encode each chunk as a list
     # of byte ids. This keeps the algorithm aligned with how text is later tokenized.
     sub_texts = self.pre_tokenize(text)
-    chunk_ids = [list(map(int, sub_t.encode('utf-8'))) for sub_t in subtexts]
+    chunk_ids = [list(map(int, sub_t.encode('utf-8'))) for sub_t in sub_texts]
     new_token = self.BASE_VOCAB_SIZE # 256 as starting point
-    i = 0
-    while i < num_merges:
+    while  new_token < self.BASE_VOCAB_SIZE + num_merges:
       stats = {}
       for ids in chunk_ids:
         stats = get_stats(ids, stats)
-
       # If no pairs remain, training is done.
       if not stats:
         break
-
       # loop through the keys of stats object, and each key will be applied to stats.get to get value to compare.
       pair = max(stats, key=stats.get)
-
       # Apply the same merge rule to every chunk in parallel, so all training sequences are
       # updated consistently with the new token.
       chunk_ids = [merge(ids, pair, new_token) for ids in chunk_ids]
-
       # Record the merge mapping: a pair -> token id and token id -> pair.
-      bpe_map[pair] = new_token
-      reversed_bpe_map[new_token] = pair
-
+      merges[pair] = new_token
       # Build the token string for the new merged symbol from its left and right child symbols.
       self.vocab[new_token] = self.vocab[pair[0]] + self.vocab[pair[1]]
-
       # Optional debug output showing which merge was learned and how often it appeared.
       if verbose:
         decoded = self.decode([new_token])
         print(f"merge {new_token - self.BASE_VOCAB_SIZE + 1}/{num_merges}: {pair} -> {new_token} (decoded: {decoded}) had {stats[pair]} occurrences")
-
       new_token += 1
-      i += 1
 
-    self.bpe_map = bpe_map
-    self.reversed_bpe_map = reversed_bpe_map
+    self.merges = merges
 
-  # def train_threshold(self, text, threshold=5):
-  #   new_token = self.BASE_VOCAB_SIZE
-  #   sub_texts = self.pre_tokenize(text)
-  #
-  #   for sub_t in sub_texts:
-  #     ids = list(map(int, sub_t.encode('utf-8')))
-  #
-  #     while True:
-  #       stats = get_stats(ids)
-  #       if not stats:
-  #         break
-  #
-  #       (a, b), freq = stats.most_common(1)[0]
-  #       if freq < threshold:
-  #         break
-  #
-  #       ids = merge(ids, (a, b), new_token)
-  #       self.reversed_merges[(a, b)] = new_token
-  #       self.merges[new_token] = (a, b)
-  #
-  #       new_token += 1
-  #
-  #   return ids
+  def train_threshold(self, text, threshold=5):
+    merges = {}
+    sub_texts = self.pre_tokenize(text)
+    chunk_ids = [list(map(int, sub_t.encode('utf-8'))) for sub_t in sub_texts]
+    new_token = self.BASE_VOCAB_SIZE  # 256 as starting point
+    while True:
+      stats = {}
+      for ids in chunk_ids:
+        stats = get_stats(ids, stats)
+      # If no pairs remain, training is done.
+      if not stats:
+        break
+      pair = max(stats, key=stats.get)
+      freq = stats[pair]
+      if freq < threshold:
+        break
+
+      # Apply the same merge rule to every chunk in parallel, so all training sequences are
+      # updated consistently with the new token.
+      chunk_ids = [merge(ids, pair, new_token) for ids in chunk_ids]
+      # Record the merge mapping: a pair -> token id and token id -> pair.
+      merges[pair] = new_token
+      # Build the token string for the new merged symbol from its left and right child symbols.
+      self.vocab[new_token] = self.vocab[pair[0]] + self.vocab[pair[1]]
+      # Optional debug output showing which merge was learned and how often it appeared.
+      new_token += 1
+
+    self.merges = merges
+
 
   # ids: a list of token ids in integer form
   # self.vocab: int -> bytes
@@ -104,25 +106,6 @@ class RegexTokenizer(Tokenizer):
       data += self.vocab[id]
     return data.decode('utf-8', errors='replace')
 
-  def _encode_chunk(self, text_bytes):
-    # return the token ids
-    # let's begin. first, convert all bytes to integers in range 0..255
-    ids = list(text_bytes)
-    while len(ids) >= 2:
-      # find the pair with the lowest merge index
-      stats = get_stats(ids)
-      pair = min(stats, key=lambda p: self.merges.get(p, float("inf")))
-      # subtle: if there are no more merges available, the key will
-      # result in an inf for every single pair, and the min will be
-      # just the first pair in the list, arbitrarily
-      # we can detect this terminating case by a membership check
-      if pair not in self.bpe_map:
-          break # nothing else can be merged anymore
-      # otherwise let's merge the best pair (lowest merge index)
-      idx = self.bpe_map[pair]
-      ids = merge(ids, pair, idx)
-    return ids
-
   def encode_ordinary(self, text):
     """Encoding that ignores any special tokens."""
     # split text into chunks of text by categories defined in regex pattern
@@ -130,23 +113,73 @@ class RegexTokenizer(Tokenizer):
     # all chunks of text are encoded separately, then results are joined
     ids = []
     for chunk in text_chunks:
-      chunk_bytes = chunk.encode("utf-8")  # raw bytes
-      chunk_ids = self._encode_chunk(chunk_bytes)
+      chunk_ids = self._encode_chunk(chunk)
       ids.extend(chunk_ids)
     return ids
 
   # returns a list of token ids for the input text,
   # using the learned merges to combine byte sequences into tokens
-  def encode(self, text):
-    sub_texts = self.pre_tokenize(text)
-    for sub_t in sub_texts:
-      text_bytes = sub_t.encode('utf-8', errors='replace')   # raw bytes
-      ids = list(map(int, text_bytes))
-      while len(ids) > 2:
-        stats = get_stats(ids)
-        pair = min(stats, key=lambda p: self.bpe_map.get(p, float('inf')))
-        if pair not in self.bpe_map:
-          break
-        idx = self.bpe_map[pair]
-        ids = merge(ids, pair, idx)
+  def encode(self, text, allowed_special="none_raise"):
+    """
+    Unlike encode_ordinary, this function handles special tokens.
+    allowed_special: can be "all"|"none"|"none_raise" or a custom set of special tokens
+    if none_raise, then an error is raised if any special token is encountered in text
+    this is the default tiktoken behavior right now as well
+    any other behavior is either annoying or a major footgun
+    """
+    # decode the user desire w.r.t. handling of special tokens
+    special = None
+    if allowed_special == "all":
+      special = self.special_tokens
+    elif allowed_special == "none":
+      special = {}
+    elif allowed_special == "none_raise":
+      special = {}
+      assert all(token not in text for token in self.special_tokens)
+    elif isinstance(allowed_special, set):
+      special = {k: v for k, v in self.special_tokens.items() if k in allowed_special}
+    else:
+      raise ValueError(f"allowed_special={allowed_special} not understood")
+    if not special:
+      # shortcut: if no special tokens, just use the ordinary encoding
+      return self.encode_ordinary(text)
+    # otherwise, we have to be careful with potential special tokens in text
+    # we handle special tokens by splitting the text
+    # based on the occurrence of any exact match with any of the special tokens
+    # we can use re.split for this. note that surrounding the pattern with ()
+    # makes it into a capturing group, so the special tokens will be included
+    special_pattern = "(" + "|".join(regex.escape(k) for k in special) + ")"
+    chunks = regex.split(special_pattern, text)
+    # now all the special characters are separated from the rest of the text
+    # all chunks of text are encoded separately, then results are joined
+    ids = []
+    for chunk in chunks:
+      if chunk in special:
+        ids.append(special[chunk])
+      else:
+        ids.extend(self._encode_chunk(chunk))
+    return ids
+
+  def _encode_chunk(self, text_chunk):
+    """Encode a single chunk of text into token ids."""
+    text_bytes = text_chunk.encode('utf-8')  # raw bytes
+    ids = list(map(int, text_bytes))
+    return self._merge_ids(ids)
+
+  # shared BPE merge loop: repeatedly applies the learned merge with the
+  # lowest (earliest-learned) rank until no known merges remain.
+  # subclasses (e.g. GPT4Tokenizer) can reuse this after preprocessing ids
+  # (such as applying a byte shuffle) before merging.
+  def _merge_ids(self, ids):
+    while len(ids) >= 2:
+      stats = get_stats(ids)
+      pair = min(stats, key=lambda p: self.merges.get(p, float('inf')))
+      # subtle: if there are no more merges available, the key will
+      # result in an inf for every single pair, and the min will be
+      # just the first pair in the list, arbitrarily
+      # we can detect this terminating case by a membership check
+      if pair not in self.merges:
+        break
+      idx = self.merges[pair]
+      ids = merge(ids, pair, idx)
     return ids
