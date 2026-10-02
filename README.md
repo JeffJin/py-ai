@@ -34,3 +34,12 @@ mutagen sync terminate py-ai — stop sync completely
 
 conda update
 conda env update -f environment.yml -n xcs-torch --prune
+
+1. On the remote server:
+    python3 -m venv .venv
+    source .venv/bin/activate
+    pip install jupyterlab
+    jupyter lab --no-browser --ip=127.0.0.1 --port=8890
+
+2. On your local machine (new terminal):
+    ssh -L 8890:127.0.0.1:8890 your_user@your_server_ip
