@@ -35,6 +35,14 @@ mutagen sync terminate py-ai — stop sync completely
 conda update
 conda env update -f environment.yml -n xcs-torch --prune
 
+# If a remote Jupyter kernel on xcs-torch still fails with
+# `ModuleNotFoundError: No module named 'PIL'`, verify/install Pillow
+# into the active kernel environment explicitly:
+conda activate xcs-torch
+python -m pip show Pillow
+python -m pip install Pillow
+python -c "from PIL import Image; print('PIL OK')"
+
 1. On the remote server:
     python3 -m venv .venv
     source .venv/bin/activate
