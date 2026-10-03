@@ -50,4 +50,4 @@ python -c "from PIL import Image; print('PIL OK')"
     jupyter lab --no-browser --ip=127.0.0.1 --port=8890
 
 2. On your local machine (new terminal):
-    ssh -L 8890:127.0.0.1:8890 your_user@your_server_ip
+    ssh -L 8890:127.0.0.1:8890 jeffjin@10.0.0.173

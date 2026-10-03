@@ -26,6 +26,7 @@ dependencies:
   - seaborn=0.13.2
   - plotly=6.0.0
   - pillow=12.1.1  # provides the PIL module required by torchvision and notebook image workflows
+  - tqdm
   - requests=2.34.2
   - regex
   - tiktoken
