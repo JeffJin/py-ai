@@ -27,6 +27,8 @@ dependencies:
   - plotly=6.0.0
   - pillow=12.1.1  # provides the PIL module required by torchvision and notebook image workflows
   - tqdm
+  - torchmetrics
+  - mlxtend
   - requests=2.34.2
   - regex
   - tiktoken
