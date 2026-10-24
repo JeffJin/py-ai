@@ -20,7 +20,7 @@ dependencies:
   - tk>=8.6             # loosened: =8.6.14 conflicts on Linux; let conda pick compatible build
   # --- scientific stack ---
   - numpy>=2.0,<3.0
-  - pandas=2.2.3
+  - pandas=2.3.3  # mlxtend 0.25 requires pandas>=2.3.3
   - scipy=1.17.1
   - scikit-learn=1.8.0
   - matplotlib=3.10.8
@@ -28,7 +28,6 @@ dependencies:
   - plotly=6.0.0
   - pillow=12.1.1  # provides the PIL module required by torchvision and notebook image workflows
   - tqdm
-  - torchmetrics
   - mlxtend
   - requests=2.34.2
   - regex
@@ -59,6 +58,8 @@ dependencies:
       - torch==2.11.0+cu128
       - torchvision==0.26.0+cu128
       - torchaudio==2.11.0+cu128
+      - torchmetrics==1.9.0  # pip, not conda: conda-forge build pulls in conda pytorch
+      - torchinfo==1.8.0     # pip, not conda: same reason
       - keyboard==0.13.5  # not available via conda channels; pip-only
       - osmium==4.0.2  # PyPI distribution of pyosmium; not packaged as "osmium" on conda-forge
 
