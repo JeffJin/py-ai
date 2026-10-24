@@ -43,10 +43,12 @@ python -m pip show Pillow
 python -m pip install Pillow
 python -c "from PIL import Image; print('PIL OK')"
 
-1. On the remote server:
+1. On the ZorinOS server:
     python3 -m venv .venv
     source .venv/bin/activate
     pip install jupyterlab
+    
+    conda activate xcs-torch
     jupyter lab --no-browser --ip=127.0.0.1 --port=8890
 
 2. On your local machine (new terminal):
